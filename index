@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLOOM</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#4F6B57; --green-light:#6B8B71; --green-bg:#E8F0E9;
+  --coral:#FF8F7A; --coral-bg:#FDEAE6;
+  --blue:#5A6F8F; --blue-bg:#E8F1F8;
+  --amber:#BA7517; --amber-bg:#FAEEDA;
+  --cream:#FFF6E8; --surface:#FFFFFF;
+  --border:#E0D8CC; --border-strong:#C8BFB2;
+  --text:#2C3E2D; --text-mid:#3A4A3B; --text-muted:#5A6B5B; --text-hint:#8A9A8B;
+  --radius:16px; --radius-sm:10px;
+}
+body{font-family:'Inter','Sarabun',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+
+/* LANDING */
+.landing{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:40px 30px;text-align:center;transition:opacity 0.5s;}
+.landing.out{opacity:0;pointer-events:none;}
+.landing-logo{height:90px;width:auto;margin-bottom:32px;}
+.landing-roles{display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px;}
+.role-btn{border:none;border-radius:var(--radius);padding:20px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:14px;text-align:left;}
+.role-btn.institution{background:var(--green);color:#fff;}
+.role-btn.institution:hover{background:#3a5040;}
+.role-btn.student{background:var(--surface);color:var(--text);border:2px solid var(--border);}
+.role-btn.student:hover{border-color:var(--green);background:var(--green-bg);}
+.role-icon{font-size:28px;flex-shrink:0;}
+.role-label{font-size:18px;font-weight:700;}
+.role-sub{font-size:13px;opacity:0.8;margin-top:2px;font-weight:400;}
+
+/* APP SHELL */
+.app-wrap{width:100%;max-width:430px;padding:0 12px 40px;display:none;}
+.app-wrap.active{display:block;}
+.app{background:var(--surface);border-radius:24px;overflow:hidden;border:2px solid var(--border);min-height:700px;display:flex;flex-direction:column;}
+
+/* TOP BAR */
+.top-bar{background:var(--green);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.top-brand{display:flex;align-items:center;gap:8px;}
+.top-brand img{height:28px;width:auto;}
+.top-brand-name{color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.3px;}
+.top-role{background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;}
+.switch-btn{background:none;border:1.5px solid rgba(255,255,255,0.4);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;cursor:pointer;font-family:inherit;}
+
+/* SCREENS */
+.screen{display:none;flex:1;flex-direction:column;overflow-y:auto;}
+.screen.active{display:flex;}
+
+/* SECTION LABEL */
+.sec-label{padding:18px 20px 10px;font-size:12px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.08em;}
+
+/* SESSION CARDS */
+.session-card{margin:0 20px 14px;background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all .15s;}
+.session-card:hover{border-color:var(--green);}
+.session-card.accepted{border-color:var(--green-light);background:var(--green-bg);}
+.session-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.session-institution{font-size:16px;font-weight:700;color:var(--text);}
+.session-topic{font-size:13px;color:var(--text-muted);margin-top:2px;}
+.badge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+.badge.open{background:var(--amber-bg);color:var(--amber);}
+.badge.accepted{background:var(--green-bg);color:var(--green);}
+.badge.full{background:#f0f0f0;color:#888;}
+.session-details{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.session-detail{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-muted);}
+.session-detail span{font-size:16px;flex-shrink:0;}
+.session-actions{display:flex;gap:10px;}
+.accept-btn{flex:1;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+.accept-btn:hover{background:#3a5040;}
+.accept-btn:disabled{background:var(--border);color:var(--text-hint);cursor:default;}
+.detail-btn{background:var(--cream);border:2px solid var(--border);border-radius:var(--radius-sm);padding:13px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--text-muted);}
+
+/* POST FORM */
+.form-body{padding:20px;flex:1;display:flex;flex-direction:column;gap:16px;}
+.field-label{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.field-input{width:100%;border:2px solid var(--border);border-radius:var(--radius-sm);padding:13px 16px;font-size:16px;font-family:inherit;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;}
+.field-input:focus{border-color:var(--green);}
+textarea.field-input{resize:none;min-height:80px;line-height:1.6;}
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.topic-chip{border:2px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);padding:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;text-align:center;font-family:inherit;transition:all .15s;}
+.topic-chip:hover,.topic-chip.sel{border-color:var(--green);background:var(--green-bg);color:var(--green);}
+.submit-btn{background:var(--green);color:#fff;border:none;border-radius:var(--radius);padding:18px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:4px;transition:background .15s;}
+.submit-btn:hover{background:#3a5040;}
+
+/* MY SESSIONS */
+.my-session-card{margin:0 20px 12px;background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:16px;}
+.my-session-card.confirmed{border-color:var(--green-light);}
+.my-session-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.my-session-title{font-size:16px;font-weight:700;color:var(--text);}
+.my-session-detail{font-size:14px;color:var(--text-muted);line-height:1.7;}
+.volunteers-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.vol-chip{background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:20px;padding:4px 12px;font-size:13px;color:var(--green);font-weight:600;}
+.no-vol{font-size:13px;color:var(--text-hint);font-style:italic;}
+
+/* NAV */
+.bottom-nav{display:flex;border-top:2px solid var(--border);flex-shrink:0;background:var(--surface);}
+.nav-btn{flex:1;padding:14px 0 12px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--text-hint);font-size:12px;font-weight:600;border:none;background:none;font-family:inherit;transition:color .12s;}
+.nav-btn.active{color:var(--green);}
+.nav-btn svg{width:26px;height:26px;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--text-hint);}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+.empty-text{font-size:17px;font-weight:600;color:var(--text-muted);margin-bottom:6px;}
+.empty-sub{font-size:14px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:var(--radius);padding:14px 24px;font-size:15px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;max-width:85vw;text-align:center;}
+.toast.show{opacity:1;}
+
+@media(max-width:430px){.app{border-radius:0;border:none;}.app-wrap{padding:0 0 40px;}}
+</style>
+</head>
+<body>
+
+<div style="width:100%;background:#fff;border-bottom:1.5px solid #E0D8CC;display:flex;justify-content:flex-end;align-items:center;padding:10px 20px;gap:8px;position:sticky;top:0;z-index:2000;">
+  <button id="btn-en" onclick="setLang('en')" style="background:#4F6B57;color:#fff;border:2px solid #4F6B57;border-radius:24px;padding:5px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">🇬🇧 EN</button>
+  <button id="btn-th" onclick="setLang('th')" style="background:none;color:#5A6B5B;border:2px solid #E0D8CC;border-radius:24px;padding:5px 16px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">🇹🇭 ไทย</button>
+</div>
+
+<!-- LANDING -->
+<div class="landing" id="landing">
+  <div style="font-size:52px;font-weight:700;color:#4F6B57;letter-spacing:-2px;font-style:italic;margin-bottom:0;">BLOOM</div>
+  <div style="font-size:16px;color:var(--text-muted);margin-bottom:32px;" data-en="Who are you?" data-th="คุณเป็นใคร?">Who are you?</div>
+  <div class="landing-roles">
+    <button class="role-btn institution" onclick="enterAs('institution')">
+      <div class="role-icon">🏛️</div>
+      <div>
+        <div class="role-label" data-en="Institution" data-th="สถาบัน">Institution</div>
+        <div class="role-sub" data-en="Elderly school, church, community center" data-th="โรงเรียนผู้สูงอายุ โบสถ์ ศูนย์ชุมชน">Elderly school, church, community center</div>
+      </div>
+    </button>
+    <button class="role-btn student" onclick="enterAs('student')">
+      <div class="role-icon">🎓</div>
+      <div>
+        <div class="role-label">Student Volunteer</div>
+        <div class="role-sub">Help elderly learners in your community</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-wrap" id="app-wrap">
+<div class="app" id="app">
+
+  <div class="top-bar">
+    <div class="top-brand">
+      <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px;font-style:italic;">BLOOM</div>
+      <div class="top-brand-name">BLOOM</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="top-role" id="top-role">Institution</div>
+      <button class="switch-btn" onclick="switchRole()" data-en="Switch" data-th="เปลี่ยน">Switch</button>
+    </div>
+  </div>
+
+  <!-- ══ INSTITUTION: DASHBOARD ══ -->
+  <div id="inst-browse" class="screen active">
+    <div class="sec-label" data-en="Overview" data-th="ภาพรวม">Overview</div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;padding:0 20px 16px;">
+      <div style="flex:1;background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:var(--radius-sm);padding:14px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:var(--green);" id="stat-sessions">5</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" data-en="Open Sessions" data-th="เซสชันที่เปิด">Open Sessions</div>
+      </div>
+      <div style="flex:1;background:var(--blue-bg);border:1.5px solid #B5CEB9;border-radius:var(--radius-sm);padding:14px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:var(--blue);" id="stat-volunteers">4</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" data-en="Students Joined" data-th="นักศึกษาที่เข้าร่วม">Students Joined</div>
+      </div>
+      <div style="flex:1;background:var(--coral-bg);border:1.5px solid #F4C4BA;border-radius:var(--radius-sm);padding:14px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:#C45A44;" id="stat-participants">90</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" data-en="Participants" data-th="ผู้เข้าร่วม">Participants</div>
+      </div>
+    </div>
+
+    <div class="sec-label" style="padding-top:0;" data-en="Students who have joined" data-th="นักศึกษาที่เข้าร่วมแล้ว">Students who have joined</div>
+    <div style="padding:0 20px 16px;display:flex;gap:8px;flex-wrap:wrap;" id="inst-students-list">
+      <span style="background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:20px;padding:6px 14px;font-size:14px;color:var(--green);font-weight:600;">🎓 Nong Fah</span>
+      <span style="background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:20px;padding:6px 14px;font-size:14px;color:var(--green);font-weight:600;">🎓 Somchai V.</span>
+      <span style="background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:20px;padding:6px 14px;font-size:14px;color:var(--green);font-weight:600;">🎓 Ploy T.</span>
+      <span style="background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:20px;padding:6px 14px;font-size:14px;color:var(--green);font-weight:600;">🎓 Min K.</span>
+    </div>
+
+    <div class="sec-label" style="padding-top:0;" data-en="Your posted sessions" data-th="เซสชันที่คุณโพสต์">Your posted sessions</div>
+    <div id="inst-session-list">
+      <div class="empty" style="padding:30px 20px;">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text" data-en="No sessions yet" data-th="ยังไม่มีเซสชัน">No sessions yet</div>
+        <div class="empty-sub">Go to Post to create one</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INSTITUTION: POST ══ -->
+  <div id="inst-post" class="screen">
+    <div class="form-body">
+      <div>
+        <div class="field-label" data-en="Institution Name" data-th="ชื่อสถาบัน">Institution Name</div>
+        <input class="field-input" id="inst-name" type="text" data-placeholder-en="e.g. Nexus Thonburi Elderly School" data-placeholder-th="เช่น โรงเรียนผู้สูงอายุ Nexus Thonburi" placeholder="e.g. Nexus Thonburi Elderly School">
+      </div>
+      <div>
+        <div class="field-label" data-en="Topic" data-th="หัวข้อ">Topic</div>
+        <div class="topic-grid">
+          <button class="topic-chip" onclick="selectTopic(this)" data-en="📱 LINE & Messaging" data-th="📱 LINE และการส่งข้อความ">📱 LINE & Messaging</button>
+          <button class="topic-chip" onclick="selectTopic(this)" data-en="🤖 AI & Smartphones" data-th="🤖 AI และสมาร์ทโฟน">🤖 AI & Smartphones</button>
+          <button class="topic-chip" onclick="selectTopic(this)" data-en="💰 Financial Safety" data-th="💰 ความปลอดภัยทางการเงิน">💰 Financial Safety</button>
+          <button class="topic-chip" onclick="selectTopic(this)" data-en="🏥 Health Apps" data-th="🏥 แอปสุขภาพ">🏥 Health Apps</button>
+          <button class="topic-chip" onclick="selectTopic(this)" data-en="📷 Photos & Video" data-th="📷 รูปภาพและวิดีโอ">📷 Photos & Video</button>
+          <button class="topic-chip" onclick="selectTopic(this)" style="grid-column:1/-1">🌱 Other</button>
+        </div>
+      </div>
+      <div>
+        <div class="field-label" data-en="Date & Time" data-th="วันที่และเวลา">Date & Time</div>
+        <input class="field-input" id="inst-datetime" type="datetime-local">
+      </div>
+      <div>
+        <div class="field-label" data-en="Location / Address" data-th="สถานที่ / ที่อยู่">Location / Address</div>
+        <input class="field-input" id="inst-location" type="text" data-placeholder-en="e.g. 123 Sukhumvit Rd, Bangkok" data-placeholder-th="เช่น 123 ถ.สุขุมวิท กรุงเทพ" placeholder="e.g. 123 Sukhumvit Rd, Bangkok">
+      </div>
+      <div>
+        <div class="field-label" data-en="Number of Participants" data-th="จำนวนผู้เข้าร่วม">Number of Participants</div>
+        <input class="field-input" id="inst-participants" type="number" data-placeholder-en="e.g. 15" data-placeholder-th="เช่น 15" placeholder="e.g. 15" min="1">
+      </div>
+      <div>
+        <div class="field-label" data-en="Volunteers Needed" data-th="จำนวนอาสาสมัครที่ต้องการ">Volunteers Needed</div>
+        <input class="field-input" id="inst-volunteers" type="number" data-placeholder-en="e.g. 3" data-placeholder-th="เช่น 3" placeholder="e.g. 3" min="1">
+      </div>
+      <div>
+        <div class="field-label" data-en="Any notes for volunteers?" data-th="หมายเหตุสำหรับอาสาสมัคร?">Any notes for volunteers?</div>
+        <textarea class="field-input" id="inst-notes" data-placeholder-en="e.g. Bring your own laptop. Participants are aged 65-80." data-placeholder-th="เช่น กรุณานำแล็ปท็อปมาเอง ผู้เข้าร่วมอายุ 65-80 ปี" placeholder="e.g. Bring your own laptop. Participants are aged 65-80."></textarea>
+      </div>
+      <button class="submit-btn" onclick="postSession()" data-en="Post Session Request →" data-th="โพสต์คำขอเซสชัน →">Post Session Request →</button>
+    </div>
+  </div>
+
+
+
+  <!-- ══ STUDENT: BROWSE ══ -->
+  <div id="student-browse" class="screen">
+    <div class="sec-label" data-en="Open Session Requests" data-th="คำขอเซสชันที่เปิดอยู่">Open Session Requests</div>
+    <div id="student-session-list">
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text" data-en="No open sessions right now" data-th="ไม่มีเซสชันที่เปิดอยู่ตอนนี้">No open sessions right now</div>
+        <div class="empty-sub" data-en="Check back soon" data-th="กลับมาตรวจสอบเร็วๆ นี้">Check back soon</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STUDENT: MY SESSIONS ══ -->
+  <div id="student-my" class="screen">
+    <div class="sec-label" data-en="My Accepted Sessions" data-th="เซสชันที่ฉันรับแล้ว">My Accepted Sessions</div>
+    <div id="student-my-list">
+      <div class="empty">
+        <div class="empty-icon">📅</div>
+        <div class="empty-text" data-en="No sessions accepted yet" data-th="ยังไม่ได้รับเซสชันใดๆ">No sessions accepted yet</div>
+        <div class="empty-sub" data-en="Browse open requests to get started" data-th="เรียกดูคำขอที่เปิดอยู่เพื่อเริ่มต้น">Browse open requests to get started</div>
+      </div>
+    </div>
+    <!-- Hours banner -->
+    <div id="hours-banner" style="display:none;margin:4px 20px 20px;background:var(--green-bg);border:1.5px solid #B5CEB9;border-radius:var(--radius);padding:16px 18px;display:flex;gap:14px;align-items:center;">
+      <div style="font-size:32px;font-weight:700;color:var(--green);" id="hours-count">0</div>
+      <div style="font-size:14px;color:var(--text-muted);line-height:1.6;" data-en="volunteer hours logged. This can count toward community service hours." data-th="ชั่วโมงอาสาสมัครที่สะสม สามารถนับเป็นชั่วโมงบริการชุมชนได้">volunteer hours logged. This can count toward community service hours.</div>
+    </div>
+  </div>
+
+  <!-- INSTITUTION NAV -->
+  <div class="bottom-nav" id="inst-nav">
+    <button class="nav-btn active" onclick="instTab('inst-browse','inst-browse-btn')" id="inst-browse-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span data-en="Dashboard" data-th="แดชบอร์ด">Dashboard</span>
+    </button>
+    <button class="nav-btn" onclick="instTab('inst-post','inst-post-btn')" id="inst-post-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span data-en="Post Session" data-th="โพสต์เซสชัน">Post Session</span>
+    </button>
+  </div>
+
+  <!-- STUDENT NAV -->
+  <div class="bottom-nav" id="student-nav" style="display:none;">
+    <button class="nav-btn active" onclick="studentTab('student-browse','student-browse-btn')" id="student-browse-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span data-en="Browse" data-th="เรียกดู">Browse</span>
+    </button>
+    <button class="nav-btn" onclick="studentTab('student-my','student-my-btn')" id="student-my-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span data-en="My Sessions" data-th="เซสชันของฉัน">My Sessions</span>
+    </button>
+  </div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let lang = 'en';
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-en').style.background = l==='en' ? '#4F6B57' : 'none';
+  document.getElementById('btn-en').style.color = l==='en' ? '#fff' : '#5A6B5B';
+  document.getElementById('btn-en').style.borderColor = l==='en' ? '#4F6B57' : '#E0D8CC';
+  document.getElementById('btn-th').style.background = l==='th' ? '#4F6B57' : 'none';
+  document.getElementById('btn-th').style.color = l==='th' ? '#fff' : '#5A6B5B';
+  document.getElementById('btn-th').style.borderColor = l==='th' ? '#4F6B57' : '#E0D8CC';
+  document.querySelectorAll('[data-en]').forEach(el => {
+    el.textContent = el.getAttribute('data-'+l) || el.getAttribute('data-en');
+  });
+  document.querySelectorAll('[data-placeholder-en]').forEach(el => {
+    el.placeholder = el.getAttribute('data-placeholder-'+l) || el.getAttribute('data-placeholder-en');
+  });
+  // refresh visible screen
+  const visible = document.querySelector('.screen.active');
+  if(visible && visible.id === 'inst-browse') loadDummySessions('browse');
+  if(visible && visible.id === 'student-browse') loadDummySessions('student');
+}
+
+const SUPABASE_URL = 'https://mnffvxvqltawhiliucxw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wp66viv2_bRqjJI--dy50Q_XeCoW6FN';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let role = 'institution';
+let selectedTopic = '';
+let studentName = '';
+
+// ── LANDING ──
+function enterAs(r) {
+  role = r;
+  if(r === 'student') {
+    studentName = prompt(lang==='th'?'ชื่อของคุณคืออะไร?':'What is your name?') || 'Student';
+  }
+  document.getElementById('landing').classList.add('out');
+  setTimeout(() => {
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('app-wrap').classList.add('active');
+    document.getElementById('app-wrap').style.paddingTop = '20px';
+    applyRole();
+  }, 500);
+}
+
+function switchRole() {
+  document.getElementById('app-wrap').classList.remove('active');
+  document.getElementById('landing').style.display = 'flex';
+  setTimeout(() => document.getElementById('landing').classList.remove('out'), 50);
+}
+
+const dummySessions = [
+  { id:'d1', institution:'Nexus Thonburi Elderly School', topic:'📱 LINE & Messaging', datetime:'2026-07-19T10:00', location:'123 Charoen Nakhon Rd, Bangkok', participants:20, volunteers_needed:3, notes:'Participants are aged 65–80. Please bring patience and a phone charger!', status:'open', accepted_by:['Nong Fah'] },
+  { id:'d2', institution:'Wat Hua Fai Elderly School', topic:'🤖 AI & Smartphones', datetime:'2026-07-20T09:00', location:'45 Rama 4 Rd, Bangkok', participants:15, volunteers_needed:2, notes:'First time using smartphones for some participants.', status:'open', accepted_by:[] },
+  { id:'d3', institution:'Nexus Thonburi Elderly School', topic:'💰 Financial Safety', datetime:'2026-07-21T14:00', location:'123 Charoen Nakhon Rd, Bangkok', participants:25, volunteers_needed:4, notes:'Focus on scam prevention and safe banking apps.', status:'open', accepted_by:['Somchai V.','Ploy T.'] },
+  { id:'d4', institution:'St. Louis Church Community Center', topic:'📷 Photos & Video', datetime:'2026-07-26T10:30', location:'215 Sathorn Rd, Bangkok', participants:12, volunteers_needed:2, notes:'Seniors want to learn how to video call their grandchildren.', status:'open', accepted_by:[] },
+  { id:'d5', institution:'Baan Kamlangjai Elderly Home', topic:'🏥 Health Apps', datetime:'2026-08-02T13:00', location:'88 Lat Phrao Rd, Bangkok', participants:18, volunteers_needed:3, notes:'Interest in hospital booking apps and medication reminders.', status:'open', accepted_by:['Min K.'] },
+];
+
+function loadDummySessions(type) {
+  if(type === 'browse') {
+    const list = document.getElementById('inst-session-list');
+    if(!list) return;
+    list.innerHTML = '';
+    dummySessions.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'my-session-card';
+      const dt = new Date(s.datetime);
+      const dtStr = dt.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'}) + ' · ' + dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+      const accepted = s.accepted_by || [];
+      div.innerHTML = `
+        <div class="my-session-top">
+          <div>
+            <div class="my-session-title">${s.topic}</div>
+            <div style="font-size:13px;color:var(--text-hint);margin-top:2px;">${s.institution}</div>
+          </div>
+          <div class="badge ${accepted.length >= s.volunteers_needed ? 'accepted' : 'open'}">${accepted.length}/${s.volunteers_needed} joined</div>
+        </div>
+        <div class="my-session-detail">📅 ${dtStr}<br>📍 ${s.location}<br>👥 ${s.participants} participants</div>
+        ${accepted.length > 0 ? '<div class="volunteers-row">' + accepted.map(v => '<span class="vol-chip">🎓 ' + v + '</span>').join('') + '</div>' : '<div class="volunteers-row"><span class="no-vol">' + (lang==='th' ? 'ยังไม่มีอาสาสมัคร' : 'No volunteers yet') + '</span></div>'}
+      `;
+      list.appendChild(div);
+    });
+    // update stats
+    const totalVols = dummySessions.reduce((a,s) => a + (s.accepted_by||[]).length, 0);
+    const totalPart = dummySessions.reduce((a,s) => a + s.participants, 0);
+    document.getElementById('stat-sessions').textContent = dummySessions.length;
+    document.getElementById('stat-volunteers').textContent = totalVols;
+    document.getElementById('stat-participants').textContent = totalPart;
+  } else {
+    const list = document.getElementById('student-session-list');
+    if(!list) return;
+    list.innerHTML = '';
+    dummySessions.forEach(s => list.appendChild(makeCard(s, type)));
+  }
+}
+
+function applyRole() {
+  const isInst = role === 'institution';
+  document.getElementById('top-role').textContent = isInst ? (lang==='th'?'สถาบัน':'Institution') : (lang==='th'?'นักศึกษา':'Student');
+  document.getElementById('inst-nav').style.display = isInst ? 'flex' : 'none';
+  document.getElementById('student-nav').style.display = isInst ? 'none' : 'flex';
+  hideAllScreens();
+  if(isInst) {
+    document.getElementById('inst-browse').classList.add('active');
+    document.getElementById('inst-browse-btn').classList.add('active');
+    setTimeout(() => loadDummySessions('browse'), 50);
+  } else {
+    document.getElementById('student-browse').classList.add('active');
+    document.getElementById('student-browse-btn').classList.add('active');
+    setTimeout(() => loadDummySessions('student'), 50);
+  }
+}
+
+function hideAllScreens() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+}
+
+// ── TABS ──
+function instTab(screenId, btnId) {
+  hideAllScreens();
+  document.getElementById(screenId).classList.add('active');
+  document.getElementById(btnId).classList.add('active');
+  if(screenId === 'inst-browse') loadDummySessions('browse');
+}
+
+function studentTab(screenId, btnId) {
+  hideAllScreens();
+  document.getElementById(screenId).classList.add('active');
+  document.getElementById(btnId).classList.add('active');
+  if(screenId === 'student-browse') loadDummySessions('student');
+  if(screenId === 'student-my') loadSessions('student-my');
+}
+
+// ── TOPIC SELECTION ──
+function selectTopic(btn) {
+  document.querySelectorAll('.topic-chip').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  selectedTopic = btn.textContent.trim();
+}
+
+// ── POST SESSION ──
+async function postSession() {
+  const name = document.getElementById('inst-name').value.trim();
+  const dt = document.getElementById('inst-datetime').value;
+  const loc = document.getElementById('inst-location').value.trim();
+  const participants = document.getElementById('inst-participants').value;
+  const volunteers = document.getElementById('inst-volunteers').value;
+  const notes = document.getElementById('inst-notes').value.trim();
+
+  if(!name || !selectedTopic || !dt || !loc || !participants || !volunteers) {
+    showToast(lang==='th'?'กรุณากรอกข้อมูลให้ครบ':'Please fill in all required fields'); return;
+  }
+
+  const { error } = await db.from('sessions').insert({
+    institution: name,
+    topic: selectedTopic,
+    datetime: dt,
+    location: loc,
+    participants: parseInt(participants),
+    volunteers_needed: parseInt(volunteers),
+    notes: notes,
+    status: 'open',
+    accepted_by: []
+  });
+
+  if(error) { showToast(lang==='th'?'เกิดข้อผิดพลาด กรุณาลองใหม่':'Error posting. Please try again.'); console.error(error); return; }
+
+  showToast(lang==='th'?'✓ โพสต์เซสชันแล้ว! นักศึกษาจะเห็นเร็วๆ นี้':'✓ Session posted! Students will see it now.');
+  document.getElementById('inst-name').value = '';
+  document.getElementById('inst-datetime').value = '';
+  document.getElementById('inst-location').value = '';
+  document.getElementById('inst-participants').value = '';
+  document.getElementById('inst-volunteers').value = '';
+  document.getElementById('inst-notes').value = '';
+  document.querySelectorAll('.topic-chip').forEach(b => b.classList.remove('sel'));
+  selectedTopic = '';
+  setTimeout(() => instTab('inst-my', 'inst-my-btn'), 1000);
+}
+
+// ── LOAD SESSIONS ──
+async function loadSessions(type) {
+  let data, error;
+
+  if(type === 'browse' || type === 'student') {
+    ({ data, error } = await db.from('sessions').select('*').eq('status','open').order('datetime', { ascending: true }));
+    const listId = type === 'browse' ? 'inst-session-list' : 'student-session-list';
+    const list = document.getElementById(listId);
+    if(error || !data || data.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">${type==='browse'?'📋':'🔍'}</div><div class="empty-text">${type==='browse'?'No sessions yet':'No open sessions right now'}</div><div class="empty-sub">${type==='browse'?'Post your first session below':'Check back soon'}</div></div>`;
+      return;
+    }
+    list.innerHTML = '';
+    data.forEach(s => list.appendChild(makeCard(s, type)));
+
+  } else if(type === 'my') {
+    ({ data, error } = await db.from('sessions').select('*').order('datetime', { ascending: true }));
+    const list = document.getElementById('inst-my-list');
+    if(error || !data || data.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="empty-icon">🗓️</div><div class="empty-text">No sessions posted yet</div><div class="empty-sub">Go to Post to create one</div></div>';
+      return;
+    }
+    list.innerHTML = '';
+    data.forEach(s => list.appendChild(makeMyCard(s)));
+
+  } else if(type === 'student-my') {
+    ({ data, error } = await db.from('sessions').select('*').contains('accepted_by', [studentName]).order('datetime', { ascending: true }));
+    const list = document.getElementById('student-my-list');
+    if(error || !data || data.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div class="empty-text" data-en="No sessions accepted yet" data-th="ยังไม่ได้รับเซสชันใดๆ">No sessions accepted yet</div><div class="empty-sub" data-en="Browse open requests to get started" data-th="เรียกดูคำขอที่เปิดอยู่เพื่อเริ่มต้น">Browse open requests to get started</div></div>';
+      document.getElementById('hours-banner').style.display = 'none';
+      return;
+    }
+    list.innerHTML = '';
+    data.forEach(s => list.appendChild(makeMyCard(s, true)));
+    document.getElementById('hours-count').textContent = data.length * 2;
+    document.getElementById('hours-banner').style.display = 'flex';
+  }
+}
+
+// ── CARD BUILDERS ──
+function makeCard(s, type) {
+  const div = document.createElement('div');
+  div.className = 'session-card';
+  const dt = new Date(s.datetime);
+  const dtStr = dt.toLocaleDateString('th-TH', {weekday:'short',day:'numeric',month:'short'}) + ' · ' + dt.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+  const accepted = s.accepted_by ? s.accepted_by.length : 0;
+  const full = accepted >= s.volunteers_needed;
+  const alreadyAccepted = s.accepted_by && s.accepted_by.includes(studentName);
+
+  div.innerHTML = `
+    <div class="session-card-top">
+      <div>
+        <div class="session-institution">${s.institution}</div>
+        <div class="session-topic">${s.topic}</div>
+      </div>
+      <div class="badge ${alreadyAccepted?'accepted':full?'full':'open'}">${alreadyAccepted?(lang==='th'?'✓ เข้าร่วมแล้ว':'✓ Joined'):full?(lang==='th'?'เต็มแล้ว':'Full'):(lang==='th'?'เปิดรับ':'Open')}</div>
+    </div>
+    <div class="session-details">
+      <div class="session-detail"><span>📅</span>${dtStr}</div>
+      <div class="session-detail"><span>📍</span>${s.location}</div>
+      <div class="session-detail"><span>👥</span>${s.participants} participants · ${accepted}/${s.volunteers_needed} volunteers</div>
+      ${s.notes ? '<div class="session-detail"><span>💬</span>' + s.notes + '</div>' : ''}
+    </div>
+    ${type === 'student' ? '<div class="session-actions"><button class="accept-btn" onclick="acceptSession(\'' + s.id + '\',' + (full||alreadyAccepted) + ')" ' + (full||alreadyAccepted?'disabled':'') + '>' + (alreadyAccepted?(lang==='th'?'✓ เข้าร่วมแล้ว':'✓ Already joined'):full?(lang==='th'?'เซสชันเต็มแล้ว':'Session full'):(lang==='th'?'✓ รับเซสชันนี้':'✓ Accept this session')) + '</button></div>' : ''}
+  `;
+  return div;
+}
+
+function makeMyCard(s, isStudent=false) {
+  const div = document.createElement('div');
+  div.className = 'my-session-card';
+  const dt = new Date(s.datetime);
+  const dtStr = dt.toLocaleDateString('th-TH', {weekday:'short',day:'numeric',month:'short'}) + ' · ' + dt.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+  const accepted = s.accepted_by || [];
+  div.innerHTML = `
+    <div class="my-session-top">
+      <div class="my-session-title">${isStudent ? s.institution : s.topic}</div>
+      <div class="badge ${accepted.length >= s.volunteers_needed ? 'accepted' : 'open'}">${accepted.length >= s.volunteers_needed ? '✓ Full' : 'Open'}</div>
+    </div>
+    <div class="my-session-detail">
+      ${!isStudent ? s.institution + '<br>' : ''}
+      📅 ${dtStr}<br>
+      📍 ${s.location}<br>
+      👥 ${s.participants} participants
+    </div>
+    <div class="volunteers-row">
+      ${accepted.length > 0 ? accepted.map(v => '<span class="vol-chip">🎓 ' + v + '</span>').join('') : '<span class="no-vol">' + (lang==='th' ? 'ยังไม่มีอาสาสมัคร' : 'No volunteers yet') + '</span>'}
+    </div>
+  `;
+  return div;
+}
+
+// ── ACCEPT SESSION ──
+async function acceptSession(id, disabled) {
+  if(disabled) return;
+  const { data: session } = await db.from('sessions').select('accepted_by,volunteers_needed').eq('id',id).single();
+  const current = session.accepted_by || [];
+  if(current.includes(studentName)) { showToast(lang==='th'?'คุณเข้าร่วมเซสชันนี้แล้ว':'You already joined this session'); return; }
+  if(current.length >= session.volunteers_needed) { showToast(lang==='th'?'เซสชันนี้เต็มแล้ว':'This session is now full'); return; }
+  const updated = [...current, studentName];
+  const newStatus = updated.length >= session.volunteers_needed ? 'full' : 'open';
+  const { error } = await db.from('sessions').update({ accepted_by: updated, status: newStatus }).eq('id', id);
+  if(error) { showToast(lang==='th'?'เกิดข้อผิดพลาด กรุณาลองใหม่':'Error. Please try again.'); return; }
+  showToast(lang==='th'?'✓ รับเซสชันแล้ว! พบกันที่นั่น':'✓ Session accepted! See you there.');
+  loadDummySessions('student');
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
