@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BLOOM</title>
+<title>BLOOM — Marketplace</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -333,9 +333,7 @@ let studentName = '';
 // ── LANDING ──
 function enterAs(r) {
   role = r;
-  if(r === 'student') {
-    studentName = prompt(lang==='th'?'ชื่อของคุณคืออะไร?':'What is your name?') || 'Student';
-  }
+  if(r === 'student') { studentName = 'Student'; }
   document.getElementById('landing').classList.add('out');
   setTimeout(() => {
     document.getElementById('landing').style.display = 'none';
